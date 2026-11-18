@@ -1,4 +1,3 @@
-"""Dark, monospace TO DO app with animated buttons. Standard library only."""
 import json
 import sys
 import time
@@ -9,36 +8,34 @@ from pathlib import Path
 
 SAVE_FILE = Path.home() / ".modern_todo.json"
 
-# ---------- palette (dark only) ----------
-BG = "#000000"            # main background: black
-SURFACE = "#0D0D10"       # secondary background: slightly less black
-SURFACE_2 = "#16161B"     # hover / input fields
-BORDER = "#222229"
-BORDER_HOVER = "#3A3A46"
-TEXT = "#FFFFFF"
-MUTED = "#8A8A96"
-BLUE = "#1E3A8A"          # buttons: dark blue
-BLUE_HOVER = "#2547A8"
-BLUE_PRESS = "#16296B"
-GLOW = "#3B63E8"
-MAROON = "#8A1C2B"
-MAROON_HOVER = "#A3263A"
-MAROON_PRESS = "#651421"
-RED_GLOW = "#E0475C"
-DANGER = "#FF5C5C"
+# ---------- palette (dark, premium matte aesthetic) ----------
+BG = "#09090B"            # rich deep black/zinc background
+SURFACE = "#121216"       # card background: soft dark grey
+SURFACE_2 = "#1A1A22"     # hover / input fields / elevated layers
+BORDER = "#272730"        # crisp subtle border
+BORDER_HOVER = "#3F3F50"
+TEXT = "#F4F4F5"          # bright primary text
+MUTED = "#9B9BAF"         # muted secondary text
+BLUE = "#2563EB"          # buttons: modern royal blue
+BLUE_HOVER = "#3B82F6"
+BLUE_PRESS = "#1D4ED8"
+GLOW = "#3B82F633"
+MAROON = "#9F1239"        # refined dark rose / maroon for danger
+MAROON_HOVER = "#BE123C"
+MAROON_PRESS = "#881337"
+RED_GLOW = "#F43F5E33"
+DANGER = "#FB7185"
 PAD = 20                  # button padding in pixels
 
-# Button colour schemes: resting colour, hover colour, pressed colour, glow colours
 BUTTON_STYLES = {
-    "blue": dict(base=BLUE, hover=BLUE_HOVER, press=BLUE_PRESS, glow=GLOW, glow_hover=GLOW),
+    "blue": dict(base=BLUE, hover=BLUE_HOVER, press=BLUE_PRESS, glow="#1D4ED8", glow_hover="#3B82F6"),
     "danger": dict(base=MAROON, hover=MAROON_HOVER, press=MAROON_PRESS,
-                   glow=RED_GLOW, glow_hover=RED_GLOW),
-    # blue normally, turns maroon red when hovered
+                   glow="#881337", glow_hover="#BE123C"),
     "blue_to_maroon": dict(base=BLUE, hover=MAROON, press=MAROON_PRESS,
-                           glow=GLOW, glow_hover=RED_GLOW),
+                           glow="#1D4ED8", glow_hover="#881337"),
 }
 
-if sys.platform == "win32":  # crisper text on high-DPI Windows screens
+if sys.platform == "win32":
     try:
         import ctypes
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -48,7 +45,6 @@ if sys.platform == "win32":  # crisper text on high-DPI Windows screens
 
 # ---------- helpers ----------
 def lerp(c1, c2, t):
-    """Blend two hex colours. t=0 -> c1, t=1 -> c2."""
     t = max(0.0, min(1.0, t))
     a = [int(c1[i:i + 2], 16) for i in (1, 3, 5)]
     b = [int(c2[i:i + 2], 16) for i in (1, 3, 5)]
@@ -59,21 +55,20 @@ def ease_out_cubic(p):
     return 1 - (1 - p) ** 3
 
 
-def ease_out_back(p):  # overshoots slightly, then settles: feels "springy"
+def ease_out_back(p):
     c1 = 1.70158
     c3 = c1 + 1
     return 1 + c3 * (p - 1) ** 3 + c1 * (p - 1) ** 2
 
 
 def animate(widget, ms, step, done=None, ease=ease_out_cubic):
-    """Call step(progress) about 60 times a second for `ms` milliseconds."""
     start = time.perf_counter()
 
     def tick():
         p = min(1.0, (time.perf_counter() - start) * 1000 / ms)
         try:
             step(ease(p))
-        except tk.TclError:   # widget was destroyed mid-animation
+        except tk.TclError:
             return
         if p < 1:
             widget.after(16, tick)
@@ -98,22 +93,17 @@ def shorten(text, limit=30):
 
 # ---------- custom button ----------
 class RoundedButton(tk.Canvas):
-    """Rounded button with an animated glow, colour fade on hover and a press effect.
-
-    Pass `square=44` for a fixed square button instead of text + padding.
-    """
-
     def __init__(self, parent, text, command, parent_bg, font, scheme="blue",
-                 pad=PAD, square=None, radius=14, glow=8):
+                 pad=PAD, square=None, radius=16, glow=6):
         self.text, self.command, self.font = text, command, font
-        self.parent_bg, self.r, self.glow, self.drop = parent_bg, radius, glow, 4
+        self.parent_bg, self.r, self.glow, self.drop = parent_bg, radius, glow, 3
         self.colors = BUTTON_STYLES[scheme]
         if square:
             self.w = self.h = square
         else:
             f = tkfont.Font(font=font)
             self.w = f.measure(text) + 2 * pad
-            self.h = f.metrics("linespace") + 2 * pad
+            self.h = f.metrics("linespace") + int(pad * 1.2)
         super().__init__(parent, width=self.w + 2 * glow,
                          height=self.h + 2 * glow + self.drop,
                          highlightthickness=0, bd=0, bg=parent_bg, cursor="hand2")
@@ -149,7 +139,7 @@ class RoundedButton(tk.Canvas):
         self.pressed = False
         self._draw()
         if 0 <= e.x <= int(self["width"]) and 0 <= e.y <= int(self["height"]):
-            self.after(70, self.command)   # tiny delay so the press effect is visible
+            self.after(70, self.command)
 
     def _rr(self, x1, y1, x2, y2, r, fill):
         r = min(r, (x2 - x1) / 2, (y2 - y1) / 2)
@@ -161,22 +151,20 @@ class RoundedButton(tk.Canvas):
         self.delete("all")
         c, g, w, h = self.colors, self.glow, self.w, self.h
         glow_color = lerp(c["glow"], c["glow_hover"], self.hover)
-        intensity = 0.15 if self.pressed else 0.30 + 0.55 * self.hover
-        # soft shadow/glow: stacked rounded rects fading out from the button edge
+        intensity = 0.12 if self.pressed else 0.25 + 0.45 * self.hover
         for k in range(g, 0, -1):
             closeness = 1 - (k - 1) / g
-            col = lerp(self.parent_bg, glow_color, intensity * closeness ** 2 * 0.6)
+            col = lerp(self.parent_bg, glow_color, intensity * closeness ** 2 * 0.5)
             self._rr(g - k, g - k + self.drop, g + w + k, g + h + k + self.drop, self.r + k, col)
         body = c["press"] if self.pressed else lerp(c["base"], c["hover"], self.hover)
-        inset = 1 if self.pressed else 0   # "squish" when pressed
+        inset = 1 if self.pressed else 0
         self._rr(g + inset, g + inset, g + w - inset, g + h - inset, self.r, body)
         self.create_text(g + w / 2, g + h / 2 + inset, text=self.text, fill=TEXT, font=self.font)
 
 
 # ---------- popups ----------
 class Dialog(tk.Toplevel):
-    """Base popup: centred over the app, fades + slides in, shakes, fades out."""
-    W, H = 500, 340
+    W, H = 520, 360
 
     def __init__(self, app, title):
         super().__init__(app, bg=BG)
@@ -198,7 +186,6 @@ class Dialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.close)
 
     def present(self, focus_widget):
-        """Call once the dialog's contents are built."""
         self._focus = focus_widget
         focus_widget.focus_set()
 
@@ -212,7 +199,7 @@ class Dialog(tk.Toplevel):
         self.after(60, self._grab)
 
     def _place_body(self, dx, dy):
-        self.body.place(x=20 + dx, y=20 + dy, relwidth=1, relheight=1, width=-40, height=-40)
+        self.body.place(x=24 + dx, y=24 + dy, relwidth=1, relheight=1, width=-48, height=-48)
 
     def _grab(self):
         try:
@@ -248,28 +235,35 @@ class Dialog(tk.Toplevel):
 
 
 class TaskDialog(Dialog):
-    """The '+' popup: a typing bar and a Submit button."""
-
     def __init__(self, app, on_submit, mono):
         super().__init__(app, "New task")
         self.on_submit = on_submit
-        tk.Label(self.body, text="New task", font=(mono, 18, "bold"), bg=SURFACE,
-                 fg=TEXT, anchor="w").pack(fill="x", padx=28, pady=(28, 4))
-        tk.Label(self.body, text="What needs doing?", font=(mono, 10), bg=SURFACE,
-                 fg=MUTED, anchor="w").pack(fill="x", padx=28)
-        self.entry = tk.Entry(self.body, font=(mono, 13), bg=SURFACE_2, fg=TEXT,
+        
+        container = tk.Frame(self.body, bg=SURFACE)
+        container.pack(fill="both", expand=True, padx=32, pady=32)
+
+        tk.Label(container, text="New task", font=(mono, 20, "bold"), bg=SURFACE,
+                 fg=TEXT, anchor="w").pack(fill="x", pady=(0, 6))
+        tk.Label(container, text="What needs doing?", font=(mono, 11), bg=SURFACE,
+                 fg=MUTED, anchor="w").pack(fill="x", pady=(0, 20))
+        
+        self.entry = tk.Entry(container, font=(mono, 13), bg=SURFACE_2, fg=TEXT,
                               insertbackground=TEXT, relief="flat", bd=0,
                               highlightthickness=2, highlightbackground=BORDER,
                               highlightcolor=BLUE_HOVER)
-        self.entry.pack(fill="x", padx=28, pady=24, ipady=12)
-        RoundedButton(self.body, "Submit", self.submit, SURFACE,
-                      (mono, 12, "bold")).pack(anchor="e", padx=20, pady=(0, 16))
+        self.entry.pack(fill="x", pady=(0, 24), ipady=12)
+        
+        btn_frame = tk.Frame(container, bg=SURFACE)
+        btn_frame.pack(fill="x", anchor="e")
+        RoundedButton(btn_frame, "Submit", self.submit, SURFACE,
+                      (mono, 11, "bold")).pack(side="right")
+        
         self.entry.bind("<Return>", lambda e: self.submit())
         self.present(self.entry)
 
     def submit(self):
         text = self.entry.get().strip()
-        if not text:   # empty: shake the card and flash the field red
+        if not text:
             self.entry.configure(highlightbackground=DANGER, highlightcolor=DANGER)
             self.after(450, self._reset_border)
             self.shake()
@@ -285,26 +279,29 @@ class TaskDialog(Dialog):
 
 
 class ConfirmDialog(Dialog):
-    """'Are you sure?' popup for destructive actions."""
-    H = 310
+    H = 320
 
     def __init__(self, app, mono, message, confirm_text, on_confirm):
         super().__init__(app, "Are you sure?")
         self.on_confirm = on_confirm
-        buttons = tk.Frame(self.body, bg=SURFACE)
-        buttons.pack(side="bottom", anchor="e", padx=20, pady=(0, 16))
+        
+        container = tk.Frame(self.body, bg=SURFACE)
+        container.pack(fill="both", expand=True, padx=32, pady=32)
+
+        buttons = tk.Frame(container, bg=SURFACE)
+        buttons.pack(side="bottom", anchor="e", pady=(16, 0))
         RoundedButton(buttons, "Cancel", self.close, SURFACE,
-                      (mono, 11, "bold")).pack(side="left", padx=(0, 8))
+                      (mono, 11, "bold")).pack(side="left", padx=(0, 12))
         RoundedButton(buttons, confirm_text, self.confirm, SURFACE,
                       (mono, 11, "bold"), scheme="danger").pack(side="left")
 
-        tk.Label(self.body, text="Are you sure?", font=(mono, 18, "bold"), bg=SURFACE,
-                 fg=TEXT, anchor="w").pack(fill="x", padx=28, pady=(28, 12))
-        tk.Label(self.body, text=message, font=(mono, 12), bg=SURFACE, fg=TEXT,
-                 anchor="w", justify="left", wraplength=self.W - 120
-                 ).pack(fill="x", padx=28)
-        tk.Label(self.body, text="This can't be undone.", font=(mono, 10), bg=SURFACE,
-                 fg=MUTED, anchor="w").pack(fill="x", padx=28, pady=(8, 0))
+        tk.Label(container, text="Are you sure?", font=(mono, 20, "bold"), bg=SURFACE,
+                 fg=TEXT, anchor="w").pack(fill="x", pady=(0, 12))
+        tk.Label(container, text=message, font=(mono, 11), bg=SURFACE, fg=TEXT,
+                 anchor="w", justify="left", wraplength=self.W - 104
+                 ).pack(fill="x")
+        tk.Label(container, text="This action cannot be undone.", font=(mono, 10), bg=SURFACE,
+                 fg=MUTED, anchor="w").pack(fill="x", pady=(8, 0))
         self.present(self)
 
     def confirm(self):
@@ -318,16 +315,16 @@ class TodoApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("To Do")
-        self.geometry("820x760")
-        self.minsize(660, 600)
+        self.geometry("860x800")
+        self.minsize(700, 640)
         self.configure(bg=BG)
 
-        self.tasks = []                 # [{"text", "done", "done_at"}]
-        self.completed_open = True      # accordion state
+        self.tasks = []
+        self.completed_open = True
         self._dialog = None
         self._flash_task = None
         self._pop_task = None
-        self._intro = True              # first render counts up from zero
+        self._intro = True
         self._clear_visible = False
         self.stat_vars = {k: tk.StringVar(value="0") for k in ("total", "active", "done")}
         self.stat_shown = {k: 0 for k in self.stat_vars}
@@ -343,24 +340,23 @@ class TodoApp(tk.Tk):
 
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("Blue.Horizontal.TProgressbar", troughcolor=SURFACE,
+        style.configure("Blue.Horizontal.TProgressbar", troughcolor=SURFACE_2,
                         background=BLUE_HOVER, bordercolor=BG, lightcolor=BLUE_HOVER,
-                        darkcolor=BLUE_HOVER, thickness=8)
+                        darkcolor=BLUE_HOVER, thickness=10)
 
         self._build()
         self.render()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ----- layout -----
     def card(self, parent):
         return tk.Frame(parent, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER,
                         highlightcolor=BORDER)
 
     def _build(self):
         main = tk.Frame(self, bg=BG)
-        main.pack(fill="both", expand=True, padx=44, pady=36)
+        main.pack(fill="both", expand=True, padx=40, pady=36)
 
-        # Header: title on the left, small square "+" on the right
+        # Header
         head = tk.Frame(main, bg=BG)
         head.pack(fill="x")
         left = tk.Frame(head, bg=BG)
@@ -368,33 +364,33 @@ class TodoApp(tk.Tk):
         tk.Label(left, text="To Do", font=self.f_title, bg=BG, fg=TEXT,
                  anchor="w").pack(fill="x")
         self.sub_lbl = tk.Label(left, font=self.f_body, bg=BG, fg=MUTED, anchor="w")
-        self.sub_lbl.pack(fill="x", pady=(6, 0))
+        self.sub_lbl.pack(fill="x", pady=(8, 0))
         RoundedButton(head, "+", self.open_task_dialog, BG, (self.mono, 20, "bold"),
-                      square=44, radius=12).pack(side="right")
+                      square=48, radius=14).pack(side="right")
 
         # Stat cards
         row = tk.Frame(main, bg=BG)
         row.pack(fill="x", pady=(32, 0))
-        for i, (key, name) in enumerate([("total", "Total"), ("active", "Active"),
-                                         ("done", "Done")]):
+        for i, (key, name) in enumerate([("total", "Total tasks"), ("active", "Active"),
+                                         ("done", "Completed")]):
             row.columnconfigure(i, weight=1, uniform="stats")
             c = self.card(row)
             c.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 16, 0))
             tk.Label(c, text=name, font=self.f_small, bg=SURFACE, fg=MUTED,
-                     anchor="w").pack(fill="x", padx=22, pady=(20, 0))
+                     anchor="w").pack(fill="x", padx=24, pady=(20, 0))
             tk.Label(c, textvariable=self.stat_vars[key], font=self.f_big, bg=SURFACE,
-                     fg=TEXT, anchor="w").pack(fill="x", padx=22, pady=(4, 20))
+                     fg=TEXT, anchor="w").pack(fill="x", padx=24, pady=(6, 20))
 
         self.progress = ttk.Progressbar(main, maximum=100, style="Blue.Horizontal.TProgressbar")
-        self.progress.pack(fill="x", pady=28)
+        self.progress.pack(fill="x", pady=32)
 
-        # Footer is packed before the list so it never gets pushed off-screen
+        # Footer
         self.footer = tk.Frame(main, bg=BG)
         self.footer.pack(side="bottom", fill="x")
         self.clear_btn = RoundedButton(self.footer, "Clear completed", self.ask_clear, BG,
                                        self.f_small, scheme="blue_to_maroon")
 
-        # Scrollable list of task cards
+        # Scrollable list
         wrap = tk.Frame(main, bg=BG)
         wrap.pack(fill="both", expand=True)
         self.canvas = tk.Canvas(wrap, highlightthickness=0, bd=0, bg=BG)
@@ -415,7 +411,6 @@ class TodoApp(tk.Tk):
         except tk.TclError:
             pass
 
-    # ----- rendering -----
     def render(self):
         flash, pop = self._flash_task, self._pop_task
         self._flash_task = self._pop_task = None
@@ -423,19 +418,20 @@ class TodoApp(tk.Tk):
             child.destroy()
 
         active = [t for t in self.tasks if not t["done"]]
-        # most recently completed first
         done = sorted((t for t in self.tasks if t["done"]),
                       key=lambda t: t["done_at"], reverse=True)
 
         if not self.tasks:
-            tk.Label(self.list_inner, text="Nothing here yet.\nPress + to add a task.",
-                     font=self.f_body, bg=BG, fg=MUTED, justify="center").pack(pady=60)
+            empty_frame = tk.Frame(self.list_inner, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER)
+            empty_frame.pack(fill="x", pady=20)
+            tk.Label(empty_frame, text="Your list is empty.\nPress + to add your first task.",
+                     font=self.f_body, bg=SURFACE, fg=MUTED, justify="center").pack(padx=30, pady=40)
         elif not active:
-            tk.Label(self.list_inner, text="All caught up.", font=self.f_body, bg=BG,
-                     fg=MUTED).pack(pady=(30, 10))
+            tk.Label(self.list_inner, text="All tasks completed. Great job!", font=self.f_body, bg=BG,
+                     fg=MUTED).pack(pady=(20, 10))
         for t in active:
             self._row(t, flash, pop)
-        if done:   # the separator/accordion only exists when there is something in it
+        if done:
             self._accordion(len(done))
             if self.completed_open:
                 for t in done:
@@ -443,17 +439,15 @@ class TodoApp(tk.Tk):
 
         total, n_done = len(self.tasks), len(done)
         self.sub_lbl.configure(text=f"{n_done} of {total} completed" if total
-                               else "Nothing to do. Enjoy!")
+                               else "Ready when you are.")
 
-        # "Clear completed" only appears when there is something to clear
         if done and not self._clear_visible:
-            self.clear_btn.pack(side="right", pady=(20, 0))
+            self.clear_btn.pack(side="right", pady=(24, 0))
             self._clear_visible = True
         elif not done and self._clear_visible:
             self.clear_btn.pack_forget()
             self._clear_visible = False
 
-        # count-up numbers + smooth progress bar (slow on launch, quick afterwards)
         ms = 1200 if self._intro else 350
         self._intro = False
         self._tween_stat("total", total, ms)
@@ -469,7 +463,7 @@ class TodoApp(tk.Tk):
         token = self.stat_token[key]
 
         def step(p):
-            if token != self.stat_token[key]:   # a newer animation took over
+            if token != self.stat_token[key]:
                 return
             value = round(start + (target - start) * p)
             self.stat_shown[key] = value
@@ -477,9 +471,8 @@ class TodoApp(tk.Tk):
         animate(self, ms, step)
 
     def _accordion(self, count):
-        """Separator line + label that collapses/expands the completed tasks."""
         head = tk.Frame(self.list_inner, bg=BG, cursor="hand2")
-        head.pack(fill="x", pady=(18, 22))
+        head.pack(fill="x", pady=(22, 16))
         arrow = "▾" if self.completed_open else "▸"
         lbl = tk.Label(head, text=f"{arrow}  Completed ({count})", font=self.f_small,
                        bg=BG, fg=MUTED, cursor="hand2")
@@ -505,31 +498,31 @@ class TodoApp(tk.Tk):
                        highlightbackground=BORDER, highlightcolor=BORDER)
         row.pack(fill="x", pady=(0, 12))
 
-        box = tk.Canvas(row, width=28, height=28, highlightthickness=0, bd=0,
+        box = tk.Canvas(row, width=30, height=30, highlightthickness=0, bd=0,
                         bg=SURFACE, cursor="hand2")
-        box.pack(side="left", padx=(20, 0), pady=18)
+        box.pack(side="left", padx=(22, 0), pady=20)
 
         x = tk.Label(row, text="✕", font=self.f_small, bg=SURFACE, fg=MUTED, cursor="hand2")
-        x.pack(side="right", padx=22)
+        x.pack(side="right", padx=24)
 
         lbl = tk.Label(row, text=task["text"], anchor="w", justify="left", bg=SURFACE,
                        fg=MUTED if task["done"] else TEXT,
                        font=self.f_done if task["done"] else self.f_body)
-        lbl.pack(side="left", fill="x", expand=True, padx=18)
-        row.bind("<Configure>", lambda e: lbl.configure(wraplength=max(120, e.width - 140)))
+        lbl.pack(side="left", fill="x", expand=True, padx=20)
+        row.bind("<Configure>", lambda e: lbl.configure(wraplength=max(140, e.width - 150)))
 
         def draw(scale):
             box.delete("all")
             if task["done"]:
-                r = 11 * scale
-                box.create_oval(14 - r, 14 - r, 14 + r, 14 + r, fill=BLUE_HOVER, outline=BLUE_HOVER)
+                r = 12 * scale
+                box.create_oval(15 - r, 15 - r, 15 + r, 15 + r, fill=BLUE_HOVER, outline=BLUE_HOVER)
                 if scale > 0.6:
-                    box.create_text(14, 14, text="✓", fill=TEXT, font=(self.mono, 10, "bold"))
+                    box.create_text(15, 15, text="✓", fill=TEXT, font=(self.mono, 10, "bold"))
             else:
-                box.create_oval(4, 4, 24, 24, outline=MUTED, width=2)
+                box.create_oval(4, 4, 26, 26, outline=MUTED, width=2)
 
         draw(1)
-        if pop is task and task["done"]:   # springy "pop" when ticking a task
+        if pop is task and task["done"]:
             animate(box, 340, draw, ease=ease_out_back)
 
         for w in (box, lbl):
@@ -551,7 +544,7 @@ class TodoApp(tk.Tk):
             except (KeyError, tk.TclError):
                 under = None
             if under is not None and (str(under) == str(row) or str(under).startswith(str(row) + ".")):
-                return   # pointer moved onto a child of this row: still hovering
+                return
             row.configure(bg=SURFACE, highlightbackground=BORDER)
             for w in widgets:
                 w.configure(bg=SURFACE)
@@ -560,7 +553,7 @@ class TodoApp(tk.Tk):
             w.bind("<Enter>", on_enter, add="+")
             w.bind("<Leave>", on_leave, add="+")
 
-        if flash is task:   # new task: glows blue, then fades into place
+        if flash is task:
             def step(p):
                 c = lerp(BLUE, SURFACE, p)
                 row.configure(bg=c)
@@ -568,7 +561,6 @@ class TodoApp(tk.Tk):
                     w.configure(bg=c)
             animate(row, 700, step)
 
-    # ----- popups -----
     def _open(self, factory):
         if self._dialog is not None and self._dialog.winfo_exists():
             self._dialog.lift()
@@ -591,7 +583,6 @@ class TodoApp(tk.Tk):
             self, self.mono, f"Clear {n} completed task{'s' if n != 1 else ''}?", "Clear",
             self.clear_done))
 
-    # ----- actions -----
     def add_task(self, text):
         task = {"text": text, "done": False, "done_at": 0.0}
         self.tasks.append(task)
@@ -616,7 +607,6 @@ class TodoApp(tk.Tk):
         self._save()
         self.render()
 
-    # ----- saving -----
     def _load(self):
         try:
             data = json.loads(SAVE_FILE.read_text(encoding="utf-8"))
@@ -624,7 +614,7 @@ class TodoApp(tk.Tk):
                            "done_at": float(t.get("done_at", 0))}
                           for t in data.get("tasks", [])]
         except (OSError, ValueError, KeyError, TypeError):
-            pass   # first run or unreadable file: start fresh
+            pass
 
     def _save(self):
         try:
